@@ -107,6 +107,17 @@
             border-radius: 4px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
+        .camera-controls {
+            margin-top: 1rem;
+        }
+        video {
+            max-width: 100%;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        canvas {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -139,6 +150,12 @@
                 <div class="video-container">
                     <img src="/video_feed" alt="Live Video Stream" id="video-stream">
                 </div>
+                <div class="camera-controls">
+                    <button class="btn" id="start-camera">Start Camera</button>
+                    <button class="btn btn-secondary" id="stop-camera" style="display:none;">Stop Camera</button>
+                </div>
+                <video id="local-video" style="display:none;" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
             </div>
 
             <div class="card">
@@ -179,10 +196,28 @@
         }, 100); // Refresh every 100ms for smooth streaming
 
         function captureSample() {
-            fetch('/api/capture_sample', { method: 'POST' })
-                .then(response => response.json())
-                .then(data => alert(data.message || 'Sample captured'))
-                .catch(error => alert('Error capturing sample'));
+            if (streaming) {
+                const ctx = canvas.getContext('2d');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                
+                canvas.toBlob(blob => {
+                    const formData = new FormData();
+                    formData.append('image', blob);
+                    
+                    fetch('/api/capture_sample', {
+                        method: 'POST',
+                        credentials: 'same-origin',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => alert(data.message || 'Sample captured'))
+                    .catch(error => alert('Error capturing sample'));
+                }, 'image/jpeg', 0.8);
+            } else {
+                alert('Please start the camera first');
+            }
         }
 
         function registerFace() {
@@ -190,6 +225,7 @@
             if (name) {
                 fetch('/api/register', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: name })
                 })
@@ -201,7 +237,10 @@
 
         function clearPhotos() {
             if (confirm('Are you sure you want to clear all photos?')) {
-                fetch('/api/alerts/photos/all', { method: 'DELETE' })
+                fetch('/api/alerts/photos/all', { 
+                    method: 'DELETE',
+                    credentials: 'same-origin'
+                })
                     .then(() => alert('Photos cleared'))
                     .catch(error => alert('Error clearing photos'));
             }
@@ -209,14 +248,20 @@
 
         function clearVideos() {
             if (confirm('Are you sure you want to clear all videos?')) {
-                fetch('/api/alerts/videos/all', { method: 'DELETE' })
+                fetch('/api/alerts/videos/all', { 
+                    method: 'DELETE',
+                    credentials: 'same-origin'
+                })
                     .then(() => alert('Videos cleared'))
                     .catch(error => alert('Error clearing videos'));
             }
         }
 
         function trainModel() {
-            fetch('/api/train', { method: 'POST' })
+            fetch('/api/train', { 
+                method: 'POST',
+                credentials: 'same-origin'
+            })
                 .then(response => response.json())
                 .then(data => {
                     alert(data.message || 'Model training completed');
@@ -226,7 +271,9 @@
         }
 
         function checkStatus() {
-            fetch('/api/status')
+            fetch('/api/status', {
+                credentials: 'same-origin'
+            })
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('face-status').textContent = data.face_recognition ? 'Trained' : 'Not Trained';
@@ -238,6 +285,73 @@
 
         // Check status on page load
         checkStatus();
+
+        // Camera functionality
+        let stream = null;
+        let streaming = false;
+        const video = document.getElementById('local-video');
+        const canvas = document.getElementById('canvas');
+        const startBtn = document.getElementById('start-camera');
+        const stopBtn = document.getElementById('stop-camera');
+
+        startBtn.addEventListener('click', startCamera);
+        stopBtn.addEventListener('click', stopCamera);
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                document.getElementById('video-stream').style.display = 'none';
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'inline-block';
+                streaming = true;
+                streamFrames();
+            } catch (err) {
+                alert('Error accessing camera: ' + err.message);
+            }
+        }
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            video.style.display = 'none';
+            document.getElementById('video-stream').style.display = 'block';
+            startBtn.style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+            streaming = false;
+        }
+
+        function streamFrames() {
+            if (!streaming) return;
+            
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('frame', blob);
+                
+                fetch('/api/stream/push', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    body: formData
+                }).then(() => {
+                    if (streaming) {
+                        setTimeout(streamFrames, 100); // Send frame every 100ms
+                    }
+                }).catch(err => {
+                    console.error('Error sending frame:', err);
+                    if (streaming) {
+                        setTimeout(streamFrames, 100);
+                    }
+                });
+            }, 'image/jpeg', 0.8);
+        }
     </script>
 </body>
 </html>
