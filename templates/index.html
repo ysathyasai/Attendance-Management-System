@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Security System - Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: #343a40;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 1.5rem;
+            text-align: center;
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .card p {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0.25rem;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+        .status {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        .status-label {
+            font-weight: bold;
+        }
+        .status-value {
+            color: #007bff;
+        }
+        .video-container {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        img {
+            max-width: 100%;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>AI Security System Dashboard</h1>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+
+    <div class="container">
+        <div class="status">
+            <h3>System Status</h3>
+            <div class="status-item">
+                <span class="status-label">Face Recognition:</span>
+                <span class="status-value" id="face-status">Not Trained</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">YOLO Detection:</span>
+                <span class="status-value" id="yolo-status">Not Loaded</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Database:</span>
+                <span class="status-value" id="db-status">Connected</span>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>Live Video Stream</h3>
+                <p>Monitor the security camera feed in real-time</p>
+                <div class="video-container">
+                    <img src="/video_feed" alt="Live Video Stream" id="video-stream">
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>Face Registration</h3>
+                <p>Register new faces for attendance tracking</p>
+                <button class="btn" onclick="captureSample()">Capture Sample</button>
+                <button class="btn btn-secondary" onclick="registerFace()">Register Face</button>
+            </div>
+
+            <div class="card">
+                <h3>Alerts & Photos</h3>
+                <p>View security alerts and captured photos</p>
+                <a href="/api/alerts/photos" class="btn">View Photos</a>
+                <button class="btn btn-secondary" onclick="clearPhotos()">Clear All</button>
+            </div>
+
+            <div class="card">
+                <h3>Video Recordings</h3>
+                <p>Access recorded video alerts</p>
+                <a href="/api/alerts/videos" class="btn">View Videos</a>
+                <button class="btn btn-secondary" onclick="clearVideos()">Clear All</button>
+            </div>
+
+            <div class="card">
+                <h3>System Management</h3>
+                <p>Manage system settings and training</p>
+                <button class="btn" onclick="trainModel()">Train Model</button>
+                <button class="btn btn-secondary" onclick="checkStatus()">System Status</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-refresh video stream
+        setInterval(() => {
+            const video = document.getElementById('video-stream');
+            video.src = video.src;
+        }, 100); // Refresh every 100ms for smooth streaming
+
+        function captureSample() {
+            fetch('/api/capture_sample', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => alert(data.message || 'Sample captured'))
+                .catch(error => alert('Error capturing sample'));
+        }
+
+        function registerFace() {
+            const name = prompt('Enter name for face registration:');
+            if (name) {
+                fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name })
+                })
+                .then(response => response.json())
+                .then(data => alert(data.message || 'Face registered'))
+                .catch(error => alert('Error registering face'));
+            }
+        }
+
+        function clearPhotos() {
+            if (confirm('Are you sure you want to clear all photos?')) {
+                fetch('/api/alerts/photos/all', { method: 'DELETE' })
+                    .then(() => alert('Photos cleared'))
+                    .catch(error => alert('Error clearing photos'));
+            }
+        }
+
+        function clearVideos() {
+            if (confirm('Are you sure you want to clear all videos?')) {
+                fetch('/api/alerts/videos/all', { method: 'DELETE' })
+                    .then(() => alert('Videos cleared'))
+                    .catch(error => alert('Error clearing videos'));
+            }
+        }
+
+        function trainModel() {
+            fetch('/api/train', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message || 'Model training completed');
+                    updateStatus();
+                })
+                .catch(error => alert('Error training model'));
+        }
+
+        function checkStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('face-status').textContent = data.face_recognition ? 'Trained' : 'Not Trained';
+                    document.getElementById('yolo-status').textContent = data.yolo_loaded ? 'Loaded' : 'Not Loaded';
+                    document.getElementById('db-status').textContent = data.database_connected ? 'Connected' : 'Disconnected';
+                })
+                .catch(error => alert('Error checking status'));
+        }
+
+        // Check status on page load
+        checkStatus();
+    </script>
+</body>
+</html>
