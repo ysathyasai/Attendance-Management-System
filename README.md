@@ -239,7 +239,3 @@ For issues or questions, check:
 1. The error logs in terminal output
 2. MySQL error logs
 3. Browser console for frontend issues
-
-## License
-
-[Add appropriate license here]
