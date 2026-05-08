@@ -42,7 +42,8 @@ Then manually update `app.py` with your database and email credentials.
 #### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ysathyasai/idk
+git clone https://github.com/ysathyasai/Attendance-Management-System
+cd Attendance-Management-System
 ```
 
 #### 2. Create and Activate Virtual Environment
